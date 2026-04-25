@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comic App</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0d0d0d;
+  color:white;
+}
+
+/* HEADER */
+h1{
+  text-align:center;
+  color:#00ff99;
+  margin:15px;
+  font-size:28px;
+}
+
+/* NAV */
+.nav{
+  display:flex;
+  background:#111;
+  border-bottom:1px solid #222;
+}
+
+.nav button{
+  flex:1;
+  padding:16px;
+  border:none;
+  background:none;
+  color:#aaa;
+  cursor:pointer;
+  font-size:16px;
+}
+
+.nav button.active{
+  color:#00ff99;
+}
+
+/* SCREENS */
+.screen{
+  display:none;
+  padding:15px;
+}
+
+.screen.active{
+  display:block;
+}
+
+/* SURF HEADER (wird versteckt) */
+#surfUI{
+  margin-bottom:10px;
+}
+
+/* CENTER */
+.centerBox{
+  width:100%;
+  max-width:600px;
+  margin:auto;
+}
+
+/* CARDS */
+.card{
+  background:#161616;
+  margin:12px;
+  padding:14px;
+  border-radius:14px;
+  font-size:16px;
+}
+
+/* INPUT */
+input,button{
+  padding:14px;
+  margin:6px;
+  border-radius:10px;
+  border:none;
+  font-size:16px;
+}
+
+button{
+  background:#1f1f1f;
+  color:white;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#00ff99;
+  color:black;
+}
+
+/* SMALL */
+.small{
+  font-size:13px;
+  opacity:0.7;
+}
+
+/* EDITOR */
+#editorBox{
+  display:none;
+  background:#121212;
+  padding:10px;
+  border-radius:12px;
+  margin:10px;
+  border:1px solid #222;
+}
+
+/* RANDOM */
+.randomTitle{
+  margin-top:20px;
+  opacity:0.8;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📚 Comic App</h1>
+
+<!-- NAV -->
+<div class="nav">
+<button onclick="show('home')" class="active">🏠 Surfen</button>
+<button onclick="show('collection')">📚 Sammlung</button>
+<button onclick="show('profile')">👤 Profil</button>
+</div>
+
+<!-- 🏠 HOME -->
+<div id="home" class="screen active">
+
+<!-- SURF UI (wird versteckt bei Wechsel) -->
+<div id="surfUI">
+
+<h3>🏠 Surfen</h3>
+
+<input id="search" placeholder="Comic suchen..." oninput="filterComics()">
+
+<div id="editorBox">
+<h4>🛠 Editor Mode</h4>
+<input id="title" placeholder="Titel">
+<input id="pages" placeholder="Seiten">
+<button onclick="addComic()">➕ Posten</button>
+</div>
+
+</div>
+
+<div id="feed"></div>
+
+</div>
+
+<!-- 📚 COLLECTION -->
+<div id="collection" class="screen">
+
+<h3>📚 Deine Sammlung</h3>
+<p id="stats">0 Comics | 0 Seiten</p>
+
+<div id="myList"></div>
+
+</div>
+
+<!-- 👤 PROFILE -->
+<div id="profile" class="screen">
+
+<h3>👤 Login</h3>
+
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Passwort">
+
+<button onclick="login()">Login</button>
+<button onclick="logout()">Logout</button>
+
+<br><br>
+
+<button onclick="editorLogin()">🛠 Editor aktivieren</button>
+
+<p id="status">Nicht eingeloggt</p>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+getFirestore,
+collection,
+getDocs,
+addDoc,
+deleteDoc,
+doc,
+getDoc,
+setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "YOUR_KEY",
+authDomain: "comic-tracker-11dce.firebaseapp.com",
+projectId: "comic-tracker-11dce",
+storageBucket: "comic-tracker-11dce.firebasestorage.app",
+messagingSenderId: "353269603215",
+appId: "1:353269603215:web:6594986b906d838f0149fa"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* STATE */
+let user=null;
+let comics=[];
+let my=[];
+let editor=false;
+
+/* NAV SWITCH */
+window.show=function(id){
+
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+
+document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+event.target.classList.add("active");
+
+/* 🟢 SURF UI HIDE/SHOW */
+if(id==="home"){
+document.getElementById("surfUI").style.display="block";
+}else{
+document.getElementById("surfUI").style.display="none";
+}
+
+}
+
+/* LOGIN */
+window.login=async function(){
+
+let u=document.getElementById("user").value;
+let p=document.getElementById("pass").value;
+
+if(!u||!p)return;
+
+let ref=doc(db,"users",u);
+let snap=await getDoc(ref);
+
+if(snap.exists()){
+if(snap.data().password!==p)return alert("Falsch");
+my=snap.data().comics||[];
+}else{
+await setDoc(ref,{password:p,comics:[]});
+my=[];
+}
+
+user=u;
+document.getElementById("status").innerText="👤 "+u;
+
+load();
+}
+
+/* LOGOUT */
+window.logout=function(){
+user=null;
+my=[];
+document.getElementById("status").innerText="Nicht eingeloggt";
+load();
+}
+
+/* EDITOR */
+window.editorLogin=function(){
+let pw=prompt("Editor Passwort");
+if(pw==="1234"){
+editor=true;
+document.getElementById("editorBox").style.display="block";
+}
+}
+
+/* ADD COMIC */
+window.addComic=async function(){
+
+if(!editor)return;
+
+let t=document.getElementById("title").value;
+let p=parseInt(document.getElementById("pages").value);
+
+if(!t||isNaN(p))return;
+
+await addDoc(collection(db,"comics"),{
+title:t,
+pages:p,
+created:Date.now()
+});
+
+load();
+}
+
+/* LOAD */
+async function load(){
+
+let snap=await getDocs(collection(db,"comics"));
+comics=[];
+snap.forEach(d=>comics.push({id:d.id,...d.data()}));
+
+render();
+}
+
+/* RENDER */
+function render(){
+
+let feed=document.getElementById("feed");
+feed.innerHTML="";
+
+let centerBox=document.createElement("div");
+centerBox.className="centerBox";
+
+/* ALL COMICS */
+comics.forEach(c=>{
+
+let added=my.includes(c.id);
+
+centerBox.innerHTML+=`
+<div class="card">
+<h4>${c.title}</h4>
+<p class="small">${c.pages} Seiten</p>
+
+${user?
+(added?
+`<button disabled>✔ drin</button>`
+:`<button onclick="add('${c.id}')">➕ hinzufügen</button>`):
+`<p class="small">Login nötig</p>`}
+
+${editor?`<button onclick="del('${c.id}')">🗑</button>`:""}
+</div>
+`;
+});
+
+feed.appendChild(centerBox);
+
+/* RANDOM */
+let title=document.createElement("h3");
+title.className="randomTitle";
+title.innerText="🎲 Für dich empfohlen";
+feed.appendChild(title);
+
+let random=[...comics].sort(()=>0.5-Math.random()).slice(0,4);
+
+random.forEach(c=>{
+
+let box=document.createElement("div");
+box.className="card";
+
+box.innerHTML=`
+<h4>${c.title}</h4>
+<p class="small">${c.pages} Seiten</p>
+
+${user?
+(my.includes(c.id)?
+`<button disabled>✔ drin</button>`
+:`<button onclick="add('${c.id}')">➕ hinzufügen</button>`):
+`<p class="small">Login nötig</p>`}
+`;
+
+feed.appendChild(box);
+});
+
+/* COLLECTION */
+let box=document.getElementById("myList");
+box.innerHTML="";
+let total=0;
+
+my.forEach(id=>{
+let c=comics.find(x=>x.id===id);
+if(c){
+total+=c.pages;
+box.innerHTML+=`<div class="card">${c.title} (${c.pages})</div>`;
+}
+});
+
+document.getElementById("stats").innerText=
+`${my.length} Comics | ${total} Seiten`;
+}
+
+/* ADD */
+window.add=async function(id){
+if(!my.includes(id)){
+my.push(id);
+await setDoc(doc(db,"users",user),{
+password:document.getElementById("pass").value,
+comics:my
+});
+}
+render();
+}
+
+/* DELETE */
+window.del=async function(id){
+if(!editor)return;
+await deleteDoc(doc(db,"comics",id));
+load();
+}
+
+/* SEARCH */
+window.filterComics=function(){
+
+let v=document.getElementById("search").value.toLowerCase();
+
+let f=comics.filter(c=>c.title.toLowerCase().includes(v));
+
+let feed=document.getElementById("feed");
+feed.innerHTML="";
+
+let centerBox=document.createElement("div");
+centerBox.className="centerBox";
+
+f.forEach(c=>{
+
+let added=my.includes(c.id);
+
+centerBox.innerHTML+=`
+<div class="card">
+<h4>${c.title}</h4>
+<p class="small">${c.pages} Seiten</p>
+
+${user?
+(added?
+`<button disabled>✔ drin</button>`
+:`<button onclick="add('${c.id}')">➕ hinzufügen</button>`):
+`<p class="small">Login nötig</p>`}
+</div>
+`;
+
+});
+
+feed.appendChild(centerBox);
+
+}
+
+load();
+
+</script>
+
+</body>
+</html>
