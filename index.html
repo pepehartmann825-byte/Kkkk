@@ -6,196 +6,99 @@
 <title>Comic App</title>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#0d0d0d;
-  color:white;
-}
-
-/* HEADER */
-h1{
-  text-align:center;
-  color:#00ff99;
-  margin:15px;
-  font-size:28px;
-}
+body{margin:0;font-family:Arial;background:#0d0d0d;color:white}
 
 /* NAV */
-.nav{
-  display:flex;
-  background:#111;
-  border-bottom:1px solid #222;
-}
-
-.nav button{
-  flex:1;
-  padding:16px;
-  border:none;
-  background:none;
-  color:#aaa;
-  cursor:pointer;
-  font-size:16px;
-}
-
-.nav button.active{
-  color:#00ff99;
-}
+.nav{display:flex;background:#111}
+.nav button{flex:1;padding:16px;background:none;border:none;color:#aaa}
+.nav button.active{color:#00ff99}
 
 /* SCREENS */
-.screen{
-  display:none;
-  padding:15px;
-}
+.screen{display:none;padding:15px}
+.screen.active{display:block}
 
-.screen.active{
-  display:block;
-}
-
-/* SURF HEADER (wird versteckt) */
-#surfUI{
-  margin-bottom:10px;
-}
-
-/* CENTER */
-.centerBox{
-  width:100%;
-  max-width:600px;
-  margin:auto;
-}
-
-/* CARDS */
-.card{
-  background:#161616;
-  margin:12px;
-  padding:14px;
-  border-radius:14px;
-  font-size:16px;
-}
+/* CARD */
+.card{background:#161616;margin:10px;padding:14px;border-radius:14px;cursor:pointer}
+.small{opacity:.7;font-size:13px}
 
 /* INPUT */
-input,button{
-  padding:14px;
-  margin:6px;
-  border-radius:10px;
-  border:none;
-  font-size:16px;
-}
+input{padding:12px;width:95%;margin:8px;border-radius:10px;border:none}
 
-button{
-  background:#1f1f1f;
-  color:white;
-  cursor:pointer;
-}
+/* DETAIL */
+#detail{position:fixed;top:0;left:0;width:100%;height:100%;background:#0d0d0d;display:none;overflow:auto;padding:20px}
+#detailBox{max-width:600px;margin:auto;background:#161616;padding:15px;border-radius:12px}
 
-button:hover{
-  background:#00ff99;
-  color:black;
-}
+.comment{background:#222;padding:8px;margin:5px 0;border-radius:8px}
 
-/* SMALL */
-.small{
-  font-size:13px;
-  opacity:0.7;
-}
-
-/* EDITOR */
-#editorBox{
-  display:none;
-  background:#121212;
-  padding:10px;
-  border-radius:12px;
-  margin:10px;
-  border:1px solid #222;
-}
-
-/* RANDOM */
-.randomTitle{
-  margin-top:20px;
-  opacity:0.8;
-}
+button{padding:10px;margin:5px;border:none;border-radius:8px;background:#1f1f1f;color:white}
 </style>
 </head>
 
 <body>
 
-<h1>📚 Comic App</h1>
-
-<!-- NAV -->
 <div class="nav">
-<button onclick="show('home')" class="active">🏠 Surfen</button>
-<button onclick="show('collection')">📚 Sammlung</button>
-<button onclick="show('profile')">👤 Profil</button>
+<button onclick="show('home',this)" class="active">🏠</button>
+<button onclick="show('collection',this)">📚</button>
+<button onclick="show('profile',this)">👤</button>
 </div>
 
-<!-- 🏠 HOME -->
+<!-- HOME -->
 <div id="home" class="screen active">
 
-<!-- SURF UI (wird versteckt bei Wechsel) -->
-<div id="surfUI">
-
-<h3>🏠 Surfen</h3>
+<h3>🏠 Feed</h3>
 
 <input id="search" placeholder="Comic suchen..." oninput="filterComics()">
 
-<div id="editorBox">
-<h4>🛠 Editor Mode</h4>
-<input id="title" placeholder="Titel">
-<input id="pages" placeholder="Seiten">
-<button onclick="addComic()">➕ Posten</button>
-</div>
-
-</div>
-
 <div id="feed"></div>
 
+<h4>🎲 Für dich</h4>
+<div id="random"></div>
+
 </div>
 
-<!-- 📚 COLLECTION -->
+<!-- COLLECTION -->
 <div id="collection" class="screen">
-
-<h3>📚 Deine Sammlung</h3>
-<p id="stats">0 Comics | 0 Seiten</p>
-
+<h3>📚 Sammlung</h3>
+<p id="stats"></p>
 <div id="myList"></div>
+</div>
+
+<!-- PROFILE -->
+<div id="profile" class="screen">
+<h3>👤 Login</h3>
+<button onclick="googleLogin()">🔐 Google Login</button>
+<p id="status">Offline</p>
+
+<div id="editorBox" style="display:none;">
+<h4>🛠 Post</h4>
+<input id="title" placeholder="Titel">
+<input id="pages" placeholder="Seiten">
+<button onclick="addComic()">➕</button>
+</div>
 
 </div>
 
-<!-- 👤 PROFILE -->
-<div id="profile" class="screen">
-
-<h3>👤 Login</h3>
-
-<input id="user" placeholder="Username">
-<input id="pass" type="password" placeholder="Passwort">
-
-<button onclick="login()">Login</button>
-<button onclick="logout()">Logout</button>
-
-<br><br>
-
-<button onclick="editorLogin()">🛠 Editor aktivieren</button>
-
-<p id="status">Nicht eingeloggt</p>
-
+<!-- DETAIL -->
+<div id="detail">
+<div id="detailBox"></div>
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-getFirestore,
-collection,
-getDocs,
-addDoc,
-deleteDoc,
-doc,
-getDoc,
-setDoc
+getFirestore, collection, getDocs, doc, getDoc,
+addDoc, updateDoc, setDoc, deleteDoc,
+arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+import {
+getAuth, signInWithPopup, GoogleAuthProvider
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+/* CONFIG */
 const firebaseConfig = {
-apiKey: "YOUR_KEY",
+apiKey: "YOUR_API_KEY",
 authDomain: "comic-tracker-11dce.firebaseapp.com",
 projectId: "comic-tracker-11dce",
 storageBucket: "comic-tracker-11dce.firebasestorage.app",
@@ -205,87 +108,66 @@ appId: "1:353269603215:web:6594986b906d838f0149fa"
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth();
+const provider = new GoogleAuthProvider();
 
 /* STATE */
 let user=null;
 let comics=[];
 let my=[];
-let editor=false;
+let current=null;
 
-/* NAV SWITCH */
-window.show=function(id){
-
+/* NAV */
+window.show=function(id,btn){
 document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
 document.getElementById(id).classList.add("active");
 
 document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
-event.target.classList.add("active");
-
-/* 🟢 SURF UI HIDE/SHOW */
-if(id==="home"){
-document.getElementById("surfUI").style.display="block";
-}else{
-document.getElementById("surfUI").style.display="none";
-}
-
+btn.classList.add("active");
 }
 
 /* LOGIN */
-window.login=async function(){
+window.googleLogin=async function(){
+const res=await signInWithPopup(auth,provider);
+user=res.user.email;
 
-let u=document.getElementById("user").value;
-let p=document.getElementById("pass").value;
+document.getElementById("status").innerText="👤 "+user;
 
-if(!u||!p)return;
+if(user==="pepehartmann825@gmail.com"){
+document.getElementById("editorBox").style.display="block";
+}
 
-let ref=doc(db,"users",u);
+loadUser();
+}
+
+/* LOAD USER COLLECTION */
+async function loadUser(){
+
+if(!user)return;
+
+let ref=doc(db,"users",user);
 let snap=await getDoc(ref);
 
 if(snap.exists()){
-if(snap.data().password!==p)return alert("Falsch");
 my=snap.data().comics||[];
 }else{
-await setDoc(ref,{password:p,comics:[]});
+await setDoc(ref,{comics:[]});
 my=[];
 }
 
-user=u;
-document.getElementById("status").innerText="👤 "+u;
-
 load();
-}
-
-/* LOGOUT */
-window.logout=function(){
-user=null;
-my=[];
-document.getElementById("status").innerText="Nicht eingeloggt";
-load();
-}
-
-/* EDITOR */
-window.editorLogin=function(){
-let pw=prompt("Editor Passwort");
-if(pw==="1234"){
-editor=true;
-document.getElementById("editorBox").style.display="block";
-}
 }
 
 /* ADD COMIC */
 window.addComic=async function(){
 
-if(!editor)return;
+if(user!=="pepehartmann825@gmail.com")return;
 
 let t=document.getElementById("title").value;
 let p=parseInt(document.getElementById("pages").value);
 
-if(!t||isNaN(p))return;
-
 await addDoc(collection(db,"comics"),{
-title:t,
-pages:p,
-created:Date.now()
+title:t,pages:p,likes:[],comments:[]
 });
 
 load();
@@ -307,57 +189,24 @@ function render(){
 let feed=document.getElementById("feed");
 feed.innerHTML="";
 
-let centerBox=document.createElement("div");
-centerBox.className="centerBox";
-
-/* ALL COMICS */
 comics.forEach(c=>{
-
-let added=my.includes(c.id);
-
-centerBox.innerHTML+=`
-<div class="card">
-<h4>${c.title}</h4>
+feed.innerHTML+=`
+<div class="card" onclick="openDetail('${c.id}')">
+<h3>${c.title}</h3>
 <p class="small">${c.pages} Seiten</p>
-
-${user?
-(added?
-`<button disabled>✔ drin</button>`
-:`<button onclick="add('${c.id}')">➕ hinzufügen</button>`):
-`<p class="small">Login nötig</p>`}
-
-${editor?`<button onclick="del('${c.id}')">🗑</button>`:""}
-</div>
-`;
+</div>`;
 });
 
-feed.appendChild(centerBox);
-
 /* RANDOM */
-let title=document.createElement("h3");
-title.className="randomTitle";
-title.innerText="🎲 Für dich empfohlen";
-feed.appendChild(title);
+let r=document.getElementById("random");
+r.innerHTML="";
 
-let random=[...comics].sort(()=>0.5-Math.random()).slice(0,4);
-
-random.forEach(c=>{
-
-let box=document.createElement("div");
-box.className="card";
-
-box.innerHTML=`
-<h4>${c.title}</h4>
-<p class="small">${c.pages} Seiten</p>
-
-${user?
-(my.includes(c.id)?
-`<button disabled>✔ drin</button>`
-:`<button onclick="add('${c.id}')">➕ hinzufügen</button>`):
-`<p class="small">Login nötig</p>`}
-`;
-
-feed.appendChild(box);
+[...comics].sort(()=>0.5-Math.random()).slice(0,3)
+.forEach(c=>{
+r.innerHTML+=`
+<div class="card" onclick="openDetail('${c.id}')">
+${c.title}
+</div>`;
 });
 
 /* COLLECTION */
@@ -369,31 +218,12 @@ my.forEach(id=>{
 let c=comics.find(x=>x.id===id);
 if(c){
 total+=c.pages;
-box.innerHTML+=`<div class="card">${c.title} (${c.pages})</div>`;
+box.innerHTML+=`<div class="card">${c.title}</div>`;
 }
 });
 
 document.getElementById("stats").innerText=
 `${my.length} Comics | ${total} Seiten`;
-}
-
-/* ADD */
-window.add=async function(id){
-if(!my.includes(id)){
-my.push(id);
-await setDoc(doc(db,"users",user),{
-password:document.getElementById("pass").value,
-comics:my
-});
-}
-render();
-}
-
-/* DELETE */
-window.del=async function(id){
-if(!editor)return;
-await deleteDoc(doc(db,"comics",id));
-load();
 }
 
 /* SEARCH */
@@ -406,30 +236,105 @@ let f=comics.filter(c=>c.title.toLowerCase().includes(v));
 let feed=document.getElementById("feed");
 feed.innerHTML="";
 
-let centerBox=document.createElement("div");
-centerBox.className="centerBox";
-
 f.forEach(c=>{
-
-let added=my.includes(c.id);
-
-centerBox.innerHTML+=`
-<div class="card">
-<h4>${c.title}</h4>
-<p class="small">${c.pages} Seiten</p>
-
-${user?
-(added?
-`<button disabled>✔ drin</button>`
-:`<button onclick="add('${c.id}')">➕ hinzufügen</button>`):
-`<p class="small">Login nötig</p>`}
-</div>
-`;
-
+feed.innerHTML+=`
+<div class="card" onclick="openDetail('${c.id}')">
+${c.title}
+</div>`;
 });
 
-feed.appendChild(centerBox);
+}
 
+/* DETAIL */
+window.openDetail=function(id){
+
+current=comics.find(c=>c.id===id);
+
+document.getElementById("detailBox").innerHTML=`
+<h2>${current.title}</h2>
+<p>${current.pages} Seiten</p>
+
+<button onclick="like()">❤️ ${current.likes.length}</button>
+<button onclick="add()">➕ Sammlung</button>
+<button onclick="comment()">💬</button>
+
+${user==="pepehartmann825@gmail.com"?
+`<button onclick="del()">🗑</button>`:""}
+
+<h3>Kommentare</h3>
+${current.comments.map(c=>
+`<div class="comment"><b>${c.user}</b>: ${c.text}</div>`
+).join("")}
+
+<br><button onclick="closeDetail()">❌</button>
+`;
+
+document.getElementById("detail").style.display="block";
+}
+
+window.closeDetail=()=>{
+document.getElementById("detail").style.display="none";
+}
+
+/* LIKE */
+window.like=async function(){
+
+if(!user)return alert("Login");
+
+let ref=doc(db,"comics",current.id);
+let snap=await getDoc(ref);
+let likes=snap.data().likes||[];
+
+if(likes.includes(user)){
+await updateDoc(ref,{likes:arrayRemove(user)});
+}else{
+await updateDoc(ref,{likes:arrayUnion(user)});
+}
+
+load();
+openDetail(current.id);
+}
+
+/* ADD */
+window.add=async function(){
+
+if(!user)return alert("Login");
+
+if(!my.includes(current.id))my.push(current.id);
+
+await setDoc(doc(db,"users",user),{comics:my});
+
+load();
+}
+
+/* COMMENT */
+window.comment=async function(){
+
+if(!user)return alert("Login");
+
+let text=prompt("Kommentar");
+if(!text)return;
+
+let ref=doc(db,"comics",current.id);
+let snap=await getDoc(ref);
+
+let comments=snap.data().comments||[];
+comments.push({user,text});
+
+await updateDoc(ref,{comments});
+
+load();
+openDetail(current.id);
+}
+
+/* DELETE */
+window.del=async function(){
+
+if(user!=="pepehartmann825@gmail.com")return;
+
+await deleteDoc(doc(db,"comics",current.id));
+closeDetail();
+load();
 }
 
 load();
